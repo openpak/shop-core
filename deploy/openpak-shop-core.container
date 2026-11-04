@@ -1,0 +1,21 @@
+# Sample only. Copy to ~/.config/containers/systemd/openpak-shop-core.container, then
+# ~/openpak/deploy/pin-ips.sh --apply to pin its address.
+[Unit]
+Description=OpenPak shop-core (console-neutral shop catalog)
+Requires=openpak-postgres.service
+After=openpak-postgres.service
+
+[Container]
+ContainerName=openpak-shop-core
+Image=ghcr.io/openpak/shop-core:latest
+AutoUpdate=registry
+Network=openpak.network
+PublishPort=127.0.0.1:20240:20240
+EnvironmentFile=%h/openpak/deploy/.env
+Environment=SHOP_CORE_HTTP_ADDR=:20240
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target
