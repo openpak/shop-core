@@ -109,3 +109,21 @@ func TestBrokenReplace(t *testing.T) {
 		t.Fatalf("unknown console: %v", err)
 	}
 }
+
+func TestPS3ConsoleRule(t *testing.T) {
+	ctx := context.Background()
+	s := open(t)
+	f, fold, err := s.IDRule(ctx, "ps3")
+	if err != nil || f != "^OPHB[0-9]{5}$" || fold != "upper" {
+		t.Fatalf("ps3 rule %q %q %v", f, fold, err)
+	}
+	if f, fold, _ = s.IDRule(ctx, "wiiu"); f != "^[0-9a-f]{16}$" || fold != "lower" {
+		t.Fatalf("wiiu rule %q %q", f, fold)
+	}
+	if _, _, err = s.IDRule(ctx, "nope"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown console: %v", err)
+	}
+	if err := s.Put(ctx, Title{Console: "ps3", TitleID: "OPHB00001", Name: "PS3LoadX", Publisher: "bucanero", Licence: "MIT", SourceRef: "https://github.com/bucanero/PS3LoadX"}, "t"); err != nil {
+		t.Fatal(err)
+	}
+}

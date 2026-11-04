@@ -5,8 +5,11 @@ Internal HTTP on `:20240`, plain, internal network only. Every route except `/he
 key: 401). An optional `X-Shop-Actor` header names who acted; it lands in the audit table.
 Errors are `{"error": code, "message": text}`.
 
-`{console}` is `switch` or `wiiu` (2-16 chars of `a-z 0-9 -`; consoles are rows in `shop_console`).
-`{id}` is a 16-digit hex title id, stored lowercase.
+`{console}` is `switch`, `wiiu` or `ps3` (2-16 chars of `a-z 0-9 -`; consoles are rows in `shop_console`).
+`{id}` is the console's title id. Each console row carries `id_format` (regexp, matched case-insensitively)
+and `id_case` (`lower`, `upper` or `none`, how the id is stored): `switch` and `wiiu` take 16 hex digits,
+stored lowercase; `ps3` takes `OPHB#####` (store homebrew), stored uppercase. A malformed id is 400
+`invalid_title_id`, an unknown console 404 `not_found`. `GET /v1/shop/consoles` shows both fields.
 
 ## Consoles
 
@@ -14,6 +17,7 @@ Errors are `{"error": code, "message": text}`.
 | --- | --- | --- |
 | `switch` | **read-only mirror** of nx-shop's `GET /internal/store/titles`, every 15 minutes and on `POST /v1/shop/switch/import` | Every title write answers 409 `read_only`. nx-shop stays the source of truth until the Switch migrates (plan phase P7). Broken tracker, pause and runs work. |
 | `wiiu` | written through this API | First native console. |
+| `ps3` | written through this API | PlayStation 3 homebrew shop (card #130). Title ids `OPHB00001..OPHB99999`. |
 
 `GET /v1/shop/consoles` returns each console with counts of titles, published, retired and broken.
 

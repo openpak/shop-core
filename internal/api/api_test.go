@@ -17,6 +17,15 @@ type stub struct {
 	published *bool
 }
 
+func (s *stub) IDRule(_ context.Context, console string) (string, string, error) {
+	switch console {
+	case "ps3":
+		return "^OPHB[0-9]{5}$", "upper", nil
+	case "switch", "wiiu":
+		return "^[0-9a-f]{16}$", "lower", nil
+	}
+	return "", "", store.ErrNotFound
+}
 func (s *stub) Ping(context.Context) error { return nil }
 func (s *stub) SetPublished(_ context.Context, console, _ string, p bool, _ string) error {
 	if console == "switch" {
@@ -88,5 +97,26 @@ func TestReadOnlyAndValidation(t *testing.T) {
 	}
 	if r := do(t, srv, "POST", "/v1/shop/switch/import", "k", ""); r.Code != 503 {
 		t.Fatalf("import without source: %d", r.Code)
+	}
+}
+
+func TestPerConsoleTitleID(t *testing.T) {
+	st := &stub{}
+	srv := &Server{Store: st, Key: "k"}
+	if r := do(t, srv, "POST", "/v1/shop/ps3/titles/ophb00001/publish", "k", ""); r.Code != 200 {
+		t.Fatalf("ps3 id (any case): %d %s", r.Code, r.Body)
+	}
+	if r := do(t, srv, "POST", "/v1/shop/ps3/titles/00050000FE000001/publish", "k", ""); r.Code != 400 {
+		t.Fatalf("hex id on ps3: %d", r.Code)
+	}
+	if r := do(t, srv, "POST", "/v1/shop/wiiu/titles/OPHB00001/publish", "k", ""); r.Code != 400 {
+		t.Fatalf("ps3 id on wiiu: %d", r.Code)
+	}
+	if r := do(t, srv, "POST", "/v1/shop/nope/titles/OPHB00001/publish", "k", ""); r.Code != 404 {
+		t.Fatalf("unknown console: %d", r.Code)
+	}
+	st.retired = ""
+	if r := do(t, srv, "POST", "/v1/shop/ps3/titles/ophb00002/retire", "k", `{"reason":"gone"}`); r.Code != 200 || st.retired != "OPHB00002:gone" {
+		t.Fatalf("stored form must be upper: %d %q", r.Code, st.retired)
 	}
 }

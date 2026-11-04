@@ -82,11 +82,13 @@ type Console struct {
 	Published int    `json:"published"`
 	Retired   int    `json:"retired"`
 	Broken    int    `json:"broken"`
+	IDFormat  string `json:"id_format"`
+	IDCase    string `json:"id_case"`
 }
 
 func (s *Store) Consoles(ctx context.Context) ([]Console, error) {
 	rows, err := s.pool.Query(ctx, `
-SELECT c.console, c.name, c.read_only, c.paused,
+SELECT c.console, c.name, c.read_only, c.paused, c.id_format, c.id_case,
   (SELECT count(*) FROM shop_title t WHERE t.console = c.console),
   (SELECT count(*) FROM shop_title t WHERE t.console = c.console AND t.published),
   (SELECT count(*) FROM shop_title t WHERE t.console = c.console AND t.retired_at IS NOT NULL),
@@ -99,12 +101,21 @@ FROM shop_console c ORDER BY c.console`)
 	out := []Console{}
 	for rows.Next() {
 		var c Console
-		if err := rows.Scan(&c.Console, &c.Name, &c.ReadOnly, &c.Paused, &c.Titles, &c.Published, &c.Retired, &c.Broken); err != nil {
+		if err := rows.Scan(&c.Console, &c.Name, &c.ReadOnly, &c.Paused, &c.IDFormat, &c.IDCase, &c.Titles, &c.Published, &c.Retired, &c.Broken); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
 	}
 	return out, rows.Err()
+}
+
+// IDRule returns the console's title id pattern and case folding ("lower", "upper" or "none").
+func (s *Store) IDRule(ctx context.Context, console string) (format, fold string, err error) {
+	err = s.pool.QueryRow(ctx, `SELECT id_format, id_case FROM shop_console WHERE console = $1`, console).Scan(&format, &fold)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", "", ErrNotFound
+	}
+	return format, fold, err
 }
 
 func (s *Store) Console(ctx context.Context, console string) (Console, error) {

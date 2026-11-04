@@ -7,7 +7,7 @@ later) are adapters over it and own their wire formats.
 
 | | |
 | --- | --- |
-| Network | All consoles (Switch mirrored read-only; Wii U is the first writer) |
+| Network | All consoles (Switch mirrored read-only; Wii U and PS3 write through the API) |
 | Role | Catalog and update-loop state for the shops; internal admin API for tools, Pakka and the website |
 | Depends on | Postgres (database `shop_core`); optional: nx-shop's store admin API for the Switch mirror |
 | Port | 20240 HTTP |

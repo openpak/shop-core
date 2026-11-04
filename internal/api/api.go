@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/openpak/shop-core/internal/store"
@@ -20,6 +21,7 @@ import (
 type Store interface {
 	Ping(ctx context.Context) error
 	Consoles(ctx context.Context) ([]store.Console, error)
+	IDRule(ctx context.Context, console string) (format, fold string, err error)
 	SetPaused(ctx context.Context, console string, paused bool, actor string) error
 	List(ctx context.Context, console string, f store.Filter) ([]store.Title, error)
 	Get(ctx context.Context, console, id string) (store.Title, error)
@@ -48,7 +50,6 @@ type Server struct {
 }
 
 var (
-	idRe      = regexp.MustCompile(`^[0-9a-fA-F]{16}$`)
 	consoleRe = regexp.MustCompile(`^[a-z0-9-]{2,16}$`)
 )
 
@@ -148,27 +149,30 @@ func consoleOf(w http.ResponseWriter, r *http.Request) (string, bool) {
 	return c, true
 }
 
-func titleOf(w http.ResponseWriter, r *http.Request) (console, id string, ok bool) {
+func (s *Server) titleOf(w http.ResponseWriter, r *http.Request) (console, id string, ok bool) {
 	if console, ok = consoleOf(w, r); !ok {
 		return
 	}
 	id = r.PathValue("id")
-	if !idRe.MatchString(id) {
-		fail(w, http.StatusBadRequest, "invalid_title_id", "title id is 16 hex digits")
+	format, fold, err := s.Store.IDRule(r.Context(), console)
+	if err != nil {
+		storeErr(w, err)
 		return "", "", false
 	}
-	// Title ids are lowercase in every table.
-	return console, lower(id), true
-}
-
-func lower(s string) string {
-	b := []byte(s)
-	for i, c := range b {
-		if c >= 'A' && c <= 'F' {
-			b[i] = c + 32
-		}
+	// Consoles differ: Switch/Wii U 16 hex digits, ps3 OPHB#####. The rule is the console's row.
+	// Matching is case-insensitive for input; the stored form follows the console's fold.
+	re, err := regexp.Compile("(?i)" + format)
+	if err != nil || !re.MatchString(id) {
+		fail(w, http.StatusBadRequest, "invalid_title_id", "title id does not match this console's format ("+format+")")
+		return "", "", false
 	}
-	return string(b)
+	switch fold {
+	case "lower":
+		id = strings.ToLower(id)
+	case "upper":
+		id = strings.ToUpper(id)
+	}
+	return console, id, true
 }
 
 func (s *Server) consoles(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +209,7 @@ func (s *Server) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) get(w http.ResponseWriter, r *http.Request) {
-	console, id, ok := titleOf(w, r)
+	console, id, ok := s.titleOf(w, r)
 	if !ok {
 		return
 	}
@@ -229,7 +233,7 @@ type putBody struct {
 }
 
 func (s *Server) put(w http.ResponseWriter, r *http.Request) {
-	console, id, ok := titleOf(w, r)
+	console, id, ok := s.titleOf(w, r)
 	if !ok {
 		return
 	}
@@ -256,7 +260,7 @@ func (s *Server) put(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) putVersion(w http.ResponseWriter, r *http.Request) {
-	console, id, ok := titleOf(w, r)
+	console, id, ok := s.titleOf(w, r)
 	if !ok {
 		return
 	}
@@ -278,7 +282,7 @@ func (s *Server) putVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) putMedia(w http.ResponseWriter, r *http.Request) {
-	console, id, ok := titleOf(w, r)
+	console, id, ok := s.titleOf(w, r)
 	if !ok {
 		return
 	}
@@ -303,7 +307,7 @@ func (s *Server) putMedia(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) setPublished(published bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		console, id, ok := titleOf(w, r)
+		console, id, ok := s.titleOf(w, r)
 		if !ok {
 			return
 		}
@@ -316,7 +320,7 @@ func (s *Server) setPublished(published bool) http.HandlerFunc {
 }
 
 func (s *Server) retire(w http.ResponseWriter, r *http.Request) {
-	console, id, ok := titleOf(w, r)
+	console, id, ok := s.titleOf(w, r)
 	if !ok {
 		return
 	}
@@ -337,7 +341,7 @@ func (s *Server) retire(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) unretire(w http.ResponseWriter, r *http.Request) {
-	console, id, ok := titleOf(w, r)
+	console, id, ok := s.titleOf(w, r)
 	if !ok {
 		return
 	}

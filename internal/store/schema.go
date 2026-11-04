@@ -112,4 +112,13 @@ CREATE TABLE shop_audit (
   detail  text NOT NULL DEFAULT ''
 );
 `,
+	// 2: per-console title id format (card #130). Existing consoles keep 16 lowercase hex digits; ps3 uses
+	// the 9-character PlayStation title id, OPHB##### for store homebrew. id_case folds the stored id.
+	`
+ALTER TABLE shop_console
+  ADD COLUMN id_format text NOT NULL DEFAULT '^[0-9a-f]{16}$',
+  ADD COLUMN id_case   text NOT NULL DEFAULT 'lower' CHECK (id_case IN ('lower', 'upper', 'none'));
+INSERT INTO shop_console (console, name, read_only, id_format, id_case)
+  VALUES ('ps3', 'PlayStation 3', false, '^OPHB[0-9]{5}$', 'upper');
+`,
 }
