@@ -47,6 +47,7 @@ type Server struct {
 	Store    Store
 	Key      string
 	Importer Importer // Switch catalog mirror
+	Rewards  *Rewards // the points ledger, for game items; nil = not configured
 }
 
 var (
@@ -73,6 +74,8 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/shop/{console}/runs", h(s.runs))
 	mux.HandleFunc("POST /v1/shop/{console}/runs", h(s.startRun))
 	mux.HandleFunc("POST /v1/shop/{console}/runs/{run}/finish", h(s.finishRun))
+	mux.HandleFunc("GET /v1/shop/{console}/game-items", h(s.gameItems))
+	mux.HandleFunc("POST /v1/shop/{console}/game-items/redeem", h(s.redeemGameItem))
 	mux.HandleFunc("POST /v1/shop/switch/import", h(s.importNow))
 }
 

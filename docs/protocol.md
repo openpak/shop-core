@@ -50,6 +50,16 @@ alerted, cleared) and persists its state here.
 Pause: `POST /v1/shop/{console}/pause`, `.../resume`. The `shop_job` table is reserved for the
 Pakka scheduler (plan section 7).
 
+## Game items (points only)
+
+`GET /v1/shop/{console}/game-items?subject=<console identity>[&game=<id>]` lists the game cosmetics a player can
+unlock for Rewards points (`game`, `game_ref`, `slot`, `name`, `price` in points, `owned`) with the player's points
+(`balance`). `POST /v1/shop/{console}/game-items/redeem` `{subject, game, game_ref, expected_price?, trans_id?}`
+unlocks one: 200 `{balance, game_ref, item}`, 402 `insufficient`, 409 `price_mismatch|owned|not_for_sale`, 404 identity
+not linked. Both relay to the Rewards ledger (`SHOP_CORE_REWARDS_URL`, `SHOP_CORE_REWARDS_KEY`: the events key); the ledger is
+the only place points move, so the DST in-game shop and every console shop share it. Unset: 503 `rewards_not_configured`.
+The player's identity is the console's own (Switch: BAAS user id; namespace = console).
+
 ## Health
 
 `GET /healthz` returns 200 `{"status":"ok"}` when the database answers.

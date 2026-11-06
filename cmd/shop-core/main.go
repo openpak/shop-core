@@ -41,6 +41,11 @@ func main() {
 	if srv.Key == "" {
 		slog.Warn("SHOP_CORE_INTERNAL_KEY is not set: every API route answers 503")
 	}
+	if base := os.Getenv("SHOP_CORE_REWARDS_URL"); base != "" {
+		srv.Rewards = &api.Rewards{Base: base, Key: os.Getenv("SHOP_CORE_REWARDS_KEY")}
+	} else {
+		slog.Info("no SHOP_CORE_REWARDS_URL: game items are not offered")
+	}
 	if base := os.Getenv("SHOP_CORE_NX_API_BASE"); base != "" {
 		mirror := &nximport.Mirror{Client: &nximport.Client{Base: base, Key: os.Getenv("SHOP_CORE_NX_KEY")}, Store: st}
 		srv.Importer = mirror

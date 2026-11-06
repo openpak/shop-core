@@ -1,5 +1,9 @@
 # Changelog: shop-core
 
+## v0.3.0 - 2026-11-06
+
+- Card #148: game items for Rewards points. `GET /v1/shop/{console}/game-items` and `POST .../game-items/redeem` relay to the Rewards ledger (events key), so every console shop lists and unlocks game cosmetics through the one ledger. Points only. Needs `SHOP_CORE_REWARDS_URL` and `SHOP_CORE_REWARDS_KEY`.
+
 ## v0.2.0 - 2026-11-04
 
 - Per-console title id format (card #130, D4): `shop_console.id_format` and `id_case` (schema step 2,
