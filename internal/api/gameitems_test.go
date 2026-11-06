@@ -13,6 +13,11 @@ func TestGameItemsRelay(t *testing.T) {
 	rw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
 		gotPath, gotKey, gotQuery, gotBody = r.URL.Path, r.Header.Get("X-Internal-Key"), r.URL.RawQuery, string(b)
+		if strings.HasSuffix(r.URL.Path, "/preview") {
+			w.Header().Set("Content-Type", "image/png")
+			w.Write([]byte("PNG"))
+			return
+		}
 		if r.Method == "POST" {
 			w.WriteHeader(402)
 			w.Write([]byte(`{"code":"insufficient","balance":5}`))
@@ -37,5 +42,11 @@ func TestGameItemsRelay(t *testing.T) {
 	}
 	if c := do(t, srv, "GET", "/v1/shop/switch/game-items?subject=a", "", "").Code; c != 401 {
 		t.Fatalf("auth: %d", c)
+	}
+	if rec := do(t, srv, "GET", "/v1/shop/switch/game-items/dst-pack-x/art", "k", ""); rec.Code != 200 || rec.Header().Get("Content-Type") != "image/png" || gotPath != "/v1/items/dst-pack-x/preview" {
+		t.Fatalf("art: %d %s", rec.Code, gotPath)
+	}
+	if c := do(t, srv, "GET", "/v1/shop/switch/game-items/a%20b/art", "k", "").Code; c != 400 {
+		t.Fatalf("bad item: %d", c)
 	}
 }

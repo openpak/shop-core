@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -122,4 +123,47 @@ func (s *Server) redeemGameItem(w http.ResponseWriter, r *http.Request) {
 	}
 	code, b, err := s.Rewards.do(r.Context(), "POST", "/internal/v1/adapter/redeem", nil, body)
 	relay(w, code, b, err)
+}
+
+var itemIDRe = regexp.MustCompile(`^[a-zA-Z0-9._-]{1,120}$`)
+
+// gameItemArt: GET /v1/shop/{console}/game-items/{item}/art relays the item's public preview picture from the ledger,
+// so a console shop shows the pack's own art from its own origin. 404 when the item has none.
+func (s *Server) gameItemArt(w http.ResponseWriter, r *http.Request) {
+	if _, ok := consoleOf(w, r); !ok || !s.rewardsOrFail(w) {
+		return
+	}
+	id := r.PathValue("item")
+	if !itemIDRe.MatchString(id) {
+		fail(w, http.StatusBadRequest, "invalid_field", "invalid item id")
+		return
+	}
+	hc := s.Rewards.Client
+	if hc == nil {
+		hc = &http.Client{Timeout: 10 * time.Second}
+	}
+	req, err := http.NewRequestWithContext(r.Context(), "GET", strings.TrimRight(s.Rewards.Base, "/")+"/v1/items/"+id+"/preview", nil)
+	if err != nil {
+		fail(w, http.StatusBadGateway, "rewards_unavailable", "the Rewards ledger did not answer")
+		return
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		fail(w, http.StatusBadGateway, "rewards_unavailable", "the Rewards ledger did not answer")
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		fail(w, http.StatusNotFound, "not_found", "no art for this item")
+		return
+	}
+	ct := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(ct, "image/") {
+		fail(w, http.StatusNotFound, "not_found", "no art for this item")
+		return
+	}
+	w.Header().Set("Content-Type", ct)
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	_, _ = io.Copy(w, io.LimitReader(resp.Body, 8<<20))
 }

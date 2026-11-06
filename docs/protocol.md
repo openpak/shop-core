@@ -60,6 +60,8 @@ not linked. Both relay to the Rewards ledger (`SHOP_CORE_REWARDS_URL`, `SHOP_COR
 the only place points move, so the DST in-game shop and every console shop share it. Unset: 503 `rewards_not_configured`.
 The player's identity is the console's own (Switch: BAAS user id; namespace = console).
 
+`GET /v1/shop/{console}/game-items/{item}/art` returns the item's preview image (the list's `item` and `art` fields say whether there is one); 404 without.
+
 ## Health
 
 `GET /healthz` returns 200 `{"status":"ok"}` when the database answers.

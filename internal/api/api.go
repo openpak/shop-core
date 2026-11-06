@@ -75,6 +75,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/shop/{console}/runs", h(s.startRun))
 	mux.HandleFunc("POST /v1/shop/{console}/runs/{run}/finish", h(s.finishRun))
 	mux.HandleFunc("GET /v1/shop/{console}/game-items", h(s.gameItems))
+	mux.HandleFunc("GET /v1/shop/{console}/game-items/{item}/art", h(s.gameItemArt))
 	mux.HandleFunc("POST /v1/shop/{console}/game-items/redeem", h(s.redeemGameItem))
 	mux.HandleFunc("POST /v1/shop/switch/import", h(s.importNow))
 }
